@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.library'
+    id 'com.github.dcendents.android-maven'
+}
+group = 'com.gksc.plugin.base'
+version = '1.0'
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+
+    defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    repositories {
+        flatDir {
+            dirs 'libs'
+        }
+    }
+
+}
+
+dependencies {
+    compileOnly fileTree(dir: 'libs', include: ['*.jar', 'uniapp-v8-release.aar'])
+    compileOnly "androidx.legacy:legacy-support-v4:$rootProject.legacyVersion"
+    compileOnly "androidx.appcompat:appcompat:$rootProject.appcompatsVersion"
+    compileOnly "com.google.android.material:material:$rootProject.materialsVersion"
+    compileOnly "androidx.constraintlayout:constraintlayout:$rootProject.constraintlayoutVersion"
+    testImplementation "junit:junit:$rootProject.junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$rootProject.junitTestVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$rootProject.espressocoreVersion"
+    compileOnly "com.alibaba:fastjson:$rootProject.fastjsonVersion"
+    implementation("com.github.Lon-Bon:lb-extend-service:202404091420")
+}

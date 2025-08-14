@@ -1,0 +1,3 @@
+rootProject.name = "GaokeUniPlugin"
+include ':app'
+include ':Base-Module'
