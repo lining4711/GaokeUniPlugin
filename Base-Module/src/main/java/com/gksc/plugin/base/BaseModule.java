@@ -15,6 +15,6 @@ public class BaseModule extends UniModule{
     }
 
     private void showToast() {
-        Toast.makeText(mUniSDKInstance.getContext(), "原生插件调用成功", Toast.LENGTH_LONG).show();
+        Toast.makeText(mUniSDKInstance.getContext(), "hahh原生插件调用成功", Toast.LENGTH_LONG).show();
     }
 }
