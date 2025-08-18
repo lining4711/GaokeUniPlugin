@@ -36,7 +36,6 @@ import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 import io.dcloud.feature.uniapp.common.UniModule;
 import io.dcloud.feature.uniapp.utils.UniLogUtils;
 
-@SuppressWarnings("unused")
 public class GoogleBillingIAPModule extends UniModule {
 
     private static final String TAG = "GoogleBillingModule";
