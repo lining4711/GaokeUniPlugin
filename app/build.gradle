@@ -7,7 +7,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
 
     defaultConfig {
-        applicationId "com.gksc.plugin"
+        applicationId "com.lingfeng.swapface"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -17,6 +17,22 @@ android {
             abiFilters 'x86','armeabi-v7a'
         }
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("./keystore/android.keystore")
+            storePassword "471151"
+            keyAlias "swapface"
+            keyPassword "471151"
+        }
+
+        debug {
+            storeFile file("./keystore/android.keystore")
+            storePassword "471151"
+            keyAlias "swapface"
+            keyPassword "471151"
+        }
     }
 
     buildTypes {
@@ -42,10 +58,7 @@ android {
 
 dependencies {
     implementation "androidx.appcompat:appcompat:$rootProject.appcompatsVersion"
-    implementation "com.google.android.material:material:$rootProject.materialsVersion"
-    implementation "androidx.constraintlayout:constraintlayout:$rootProject.constraintlayoutVersion"
     testImplementation "junit:junit:$rootProject.junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$rootProject.junitTestVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$rootProject.espressocoreVersion"
     implementation project(':Base-Module')
 }

@@ -1,10 +1,8 @@
-package con.gksc.plugin;
-
-import androidx.appcompat.app.AppCompatActivity;
+package com.lingfeng.swapface;
 
 import android.os.Bundle;
 
-import com.gksc.plugin.R;
+import androidx.appcompat.app.AppCompatActivity;
 
 
 public class MainActivity extends AppCompatActivity {

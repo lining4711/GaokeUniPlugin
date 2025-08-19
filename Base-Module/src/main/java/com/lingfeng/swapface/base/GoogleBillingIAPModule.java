@@ -1,7 +1,8 @@
-package com.gksc.plugin.base;
+package com.lingfeng.swapface.base;
 
 import android.app.Activity;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -46,6 +47,9 @@ public class GoogleBillingIAPModule extends UniModule {
     private PurchasesUpdatedListener purchasesUpdatedListener = new PurchasesUpdatedListener() {
         @Override
         public void onPurchasesUpdated(@NonNull BillingResult billingResult, List<Purchase> purchases) {
+
+            Toast.makeText(mUniSDKInstance.getContext(), "onPurchasesUpdated", Toast.LENGTH_LONG).show();
+
             JSONObject result = new JSONObject();
             result.put("responseCode", billingResult.getResponseCode());
             result.put("debugMessage", billingResult.getDebugMessage());
@@ -62,6 +66,10 @@ public class GoogleBillingIAPModule extends UniModule {
                 }
                 result.put("purchases", purchaseArray);
             }
+
+            Toast.makeText(mUniSDKInstance.getContext(), "onPurchasesUpdated = " + result.toJSONString(), Toast.LENGTH_LONG).show();
+
+
             mUniSDKInstance.fireGlobalEventCallback("IAP_PURCHASE_UPDATE", result);
         }
     };
@@ -69,6 +77,8 @@ public class GoogleBillingIAPModule extends UniModule {
     // 初始化 BillingClient
     @UniJSMethod(uiThread = true)
     public void initClient() {
+        Toast.makeText(mUniSDKInstance.getContext(), "initClient", Toast.LENGTH_LONG).show();
+
         if (billingClient == null) {
             billingClient = BillingClient.newBuilder(mUniSDKInstance.getContext())
                     .setListener(purchasesUpdatedListener)
@@ -82,6 +92,9 @@ public class GoogleBillingIAPModule extends UniModule {
                 JSONObject result = new JSONObject();
                 result.put("responseCode", billingResult.getResponseCode());
                 result.put("msg", billingResult.getDebugMessage());
+
+                Toast.makeText(mUniSDKInstance.getContext(), "onBillingSetupFinished", Toast.LENGTH_LONG).show();
+
                 mUniSDKInstance.fireGlobalEventCallback("IAP_INIT", result);
             }
 
@@ -95,6 +108,9 @@ public class GoogleBillingIAPModule extends UniModule {
     // 查询商品详情
     @UniJSMethod(uiThread = true)
     public void queryProduct(String productId, String productType) {
+        Toast.makeText(mUniSDKInstance.getContext(), "queryProduct = " + productId, Toast.LENGTH_LONG).show();
+
+
         List<QueryProductDetailsParams.Product> productList = new ArrayList<QueryProductDetailsParams.Product>();
         productList.add(
                 QueryProductDetailsParams.Product.newBuilder()
@@ -129,6 +145,8 @@ public class GoogleBillingIAPModule extends UniModule {
                     }
                 }
                 result.put("products", array);
+
+                Toast.makeText(mUniSDKInstance.getContext(), "onProductDetailsResponse = " + array.toJSONString(), Toast.LENGTH_LONG).show();
 
                 mUniSDKInstance.fireGlobalEventCallback("IAP_PRODUCT_QUERY", result);
             }

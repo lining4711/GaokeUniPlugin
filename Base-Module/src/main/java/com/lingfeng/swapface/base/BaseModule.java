@@ -1,4 +1,4 @@
-package com.gksc.plugin.base;
+package com.lingfeng.swapface.base;
 
 import android.widget.Toast;
 
@@ -15,6 +15,6 @@ public class BaseModule extends UniModule{
     }
 
     private void showToast() {
-        Toast.makeText(mUniSDKInstance.getContext(), "lininghahh原生插件调用成功", Toast.LENGTH_LONG).show();
+        Toast.makeText(mUniSDKInstance.getContext(), "20251202原生插件调用成功", Toast.LENGTH_LONG).show();
     }
 }
