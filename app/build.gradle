@@ -58,7 +58,5 @@ android {
 
 dependencies {
     implementation "androidx.appcompat:appcompat:$rootProject.appcompatsVersion"
-    testImplementation "junit:junit:$rootProject.junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$rootProject.junitTestVersion"
     implementation project(':Base-Module')
 }

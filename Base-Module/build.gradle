@@ -37,15 +37,14 @@ android {
 }
 
 dependencies {
+    //    但只用 compileOnly 引用，不会真的打包进去。最终跟 HBuilderX 内置的 uniapp-v8-release.aar 会 重复打包 → 报错。
     compileOnly fileTree(dir: 'libs', include: ['*.jar', 'uniapp-v8-release.aar'])
     compileOnly "androidx.appcompat:appcompat:$rootProject.appcompatsVersion"
-    testImplementation "junit:junit:$rootProject.junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$rootProject.junitTestVersion"
-    compileOnly "com.alibaba:fastjson:$rootProject.fastjsonVersion"
 
     // 依赖冲突，需要显示指定一个版本
     implementation 'androidx.core:core:1.5.0'
     implementation 'androidx.fragment:fragment:1.3.4'
 
-    implementation("com.android.billingclient:billing:8.+")
+    compileOnly "com.alibaba:fastjson:1.2.73"
+    compile("com.android.billingclient:billing:8.0.0")
 }
