@@ -5,6 +5,11 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="startCon"/>
+
     <ListView
         android:id="@+id/product_list_view"
         android:layout_width="match_parent"

@@ -1,6 +1,9 @@
 package com.lingfeng.swapface.base;
 
 import android.app.Activity;
+import android.util.Log;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import com.android.billingclient.api.*;
 import java.util.ArrayList;
@@ -8,7 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class GooglePayManager implements PurchasesUpdatedListener {
-
+    private static final String TAG = "GooglePayManager";
     private static GooglePayManager instance;
     private BillingClient billingClient;
     private Activity activity;
@@ -18,21 +21,33 @@ public class GooglePayManager implements PurchasesUpdatedListener {
         this.activity = activity;
         billingClient = BillingClient.newBuilder(activity)
                 .setListener(this)
-//                .enablePendingPurchases(PendingPurchasesParams.newBuilder().build())
+                .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()) //谷歌要求必须启动一次性购买
+                .enableAutoServiceReconnection() // Add this line to enable reconnection
                 .build();
-
-        billingClient.startConnection(new BillingClientStateListener() {
-            @Override
-            public void onBillingSetupFinished(@NonNull BillingResult billingResult) { }
-
-            @Override
-            public void onBillingServiceDisconnected() { }
-        });
     }
+
 
     public static GooglePayManager getInstance(Activity activity) {
         if (instance == null) instance = new GooglePayManager(activity);
         return instance;
+    }
+
+    public void startConnect(ConnectCallBack callBack){
+        billingClient.startConnection(new BillingClientStateListener() {
+            @Override
+            public void onBillingSetupFinished(@NonNull BillingResult billingResult) {
+                if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                    // BillingClient 可以使用了，查询商品或购买
+                    Log.d(TAG, "连接成功");
+                    callBack.callBackConnect();
+                }
+            }
+
+            @Override
+            public void onBillingServiceDisconnected() {
+                Log.d(TAG, "断开连接");
+            }
+        });
     }
 
     public void queryProductDetails(List<String> productIds, ProductDetailsResponseListener listener) {
@@ -79,5 +94,9 @@ public class GooglePayManager implements PurchasesUpdatedListener {
                     .build();
             billingClient.acknowledgePurchase(ackParams, result -> { });
         }
+    }
+
+    public interface ConnectCallBack{
+        void callBackConnect();
     }
 }

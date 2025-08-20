@@ -1,11 +1,14 @@
 package com.lingfeng.swapface.base;
 
 import android.app.Activity;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
 import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.AcknowledgePurchaseResponseListener;
@@ -28,6 +31,7 @@ import java.util.Collections;
 import java.util.List;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
+import io.dcloud.feature.uniapp.bridge.UniJSCallback;
 import io.dcloud.feature.uniapp.common.UniModule;
 
 public class BaseModule extends UniModule{
@@ -120,9 +124,13 @@ public class BaseModule extends UniModule{
                         .build()
         );
 
+        Toast.makeText(mUniSDKInstance.getContext(), "productList = " + productList.get(0).toString(), Toast.LENGTH_LONG).show();
+
         QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
                 .setProductList(productList)
                 .build();
+
+        Toast.makeText(mUniSDKInstance.getContext(), "QueryProductDetailsParams = " + params.toString(), Toast.LENGTH_LONG).show();
 
         billingClient.queryProductDetailsAsync(params, new ProductDetailsResponseListener() {
             @Override
@@ -130,6 +138,11 @@ public class BaseModule extends UniModule{
                                                  @NonNull QueryProductDetailsResult queryProductDetailsResult) {
                 JSONObject result = new JSONObject();
                 result.put("responseCode", billingResult.getResponseCode());
+
+                Toast.makeText(mUniSDKInstance.getContext(), "onProductDetailsResponse = " + result.toJSONString(), Toast.LENGTH_LONG).show();
+
+                Toast.makeText(mUniSDKInstance.getContext(), "QueryProductDetailsResult = " + queryProductDetailsResult.getProductDetailsList().size(), Toast.LENGTH_LONG).show();
+
 
                 JSONArray array = new JSONArray();
                 List<ProductDetails> productDetailsList = queryProductDetailsResult.getProductDetailsList();
@@ -242,5 +255,40 @@ public class BaseModule extends UniModule{
                 mUniSDKInstance.fireGlobalEventCallback("IAP_ACKNOWLEDGE", result);
             }
         });
+    }
+
+    // 异步方法（携带业务ID）
+    @UniJSMethod(uiThread = false)
+    public void startTask(final String taskId, final UniJSCallback callback) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // 模拟耗时任务
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                // 构造返回数据
+                JSONObject result = new JSONObject();
+                try {
+                    result.put("taskId", taskId);
+                    result.put("data", "这是Java异步返回的数据，业务ID=" + taskId);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                // 回到主线程回调给 UniApp
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (callback != null) {
+                            callback.invoke(result);
+                        }
+                    }
+                });
+            }
+        }).start();
     }
 }

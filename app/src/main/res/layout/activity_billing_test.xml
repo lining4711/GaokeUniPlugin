@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <Button
+        android:id="@+id/btnQuery"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="查询商品" />
+
+    <Button
+        android:id="@+id/btnBuy"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="购买商品"
+        android:layout_marginTop="10dp"/>
+
+    <TextView
+        android:id="@+id/tvLog"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="10dp"
+        android:background="#EEEEEE"
+        android:textSize="14sp"
+        android:text="日志输出...\n"
+        android:scrollbars="vertical"/>
+</LinearLayout>

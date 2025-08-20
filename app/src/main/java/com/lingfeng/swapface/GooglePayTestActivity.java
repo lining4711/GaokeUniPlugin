@@ -2,6 +2,8 @@ package com.lingfeng.swapface;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
@@ -38,34 +40,45 @@ public class GooglePayTestActivity extends AppCompatActivity {
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, displayList);
         productListView.setAdapter(adapter);
 
+    }
+
+    public void startCon(View view){
         fetchProducts();
+
         setupClickListener();
     }
 
     private void fetchProducts() {
         List<String> productIds = new ArrayList<>();
-        productIds.add("swapface_1");
-        productIds.add("swapface_2");
+        productIds.add("faceswap_1");
+        productIds.add("faceswap_2");
 
-        GooglePayManager.getInstance(this).queryProductDetails(productIds, new ProductDetailsResponseListener() {
+        GooglePayManager.getInstance(this).startConnect(new GooglePayManager.ConnectCallBack() {
             @Override
-            public void onProductDetailsResponse(@NonNull BillingResult billingResult, @NonNull QueryProductDetailsResult result) {
-                if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                    List<ProductDetails> list = result.getProductDetailsList();
-                    productDetailsList.clear();
-                    productDetailsList.addAll(list);
-                    displayList.clear();
-                    for (ProductDetails pd : list) {
-                        if (pd.getOneTimePurchaseOfferDetails() != null) {
-                            displayList.add(pd.getName() + " - " + pd.getOneTimePurchaseOfferDetails().getFormattedPrice());
+            public void callBackConnect() {
+                GooglePayManager.getInstance(GooglePayTestActivity.this).queryProductDetails(productIds, new ProductDetailsResponseListener() {
+                    @Override
+                    public void onProductDetailsResponse(@NonNull BillingResult billingResult, @NonNull QueryProductDetailsResult result) {
+                        Log.d("GooglePayTestActivity","---" + billingResult.getDebugMessage());
+
+                        if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                            List<ProductDetails> list = result.getProductDetailsList();
+                            productDetailsList.clear();
+                            productDetailsList.addAll(list);
+                            displayList.clear();
+                            for (ProductDetails pd : list) {
+                                if (pd.getOneTimePurchaseOfferDetails() != null) {
+                                    displayList.add(pd.getName() + " - " + pd.getOneTimePurchaseOfferDetails().getFormattedPrice());
+                                } else {
+                                    displayList.add(pd.getName());
+                                }
+                            }
+                            adapter.notifyDataSetChanged();
                         } else {
-                            displayList.add(pd.getName());
+                            Toast.makeText(GooglePayTestActivity.this, "查询失败: " + billingResult.getDebugMessage(), Toast.LENGTH_SHORT).show();
                         }
                     }
-                    adapter.notifyDataSetChanged();
-                } else {
-                    Toast.makeText(GooglePayTestActivity.this, "查询失败: " + billingResult.getDebugMessage(), Toast.LENGTH_SHORT).show();
-                }
+                });
             }
         });
     }

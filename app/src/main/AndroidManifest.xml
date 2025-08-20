@@ -22,7 +22,9 @@
         <activity
             android:theme="@style/Theme.AppCompat"
             android:name=".GooglePayTestActivity"/>
-
+        <activity
+            android:theme="@style/Theme.AppCompat"
+            android:name=".BillingTestActivity"/>
     </application>
 
 </manifest>
