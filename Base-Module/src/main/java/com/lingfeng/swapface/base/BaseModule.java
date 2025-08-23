@@ -41,6 +41,8 @@ public class BaseModule extends UniModule{
     private ProductDetails cachedProduct;
     private BillingManager billingManager = null;
 
+    private UniJSCallback successPayCallback;
+
     @UniJSMethod
     public void test(){
         showToast();
@@ -55,30 +57,14 @@ public class BaseModule extends UniModule{
         billingManager = new BillingManager(mUniSDKInstance.getContext(), new BillingManager.BillingCallback() {
             @Override
             public void onConnected() {
+                asynCallBack("onConnected", "Billing Service 已连接 ✅", callback);
 //                appendLog("Billing Service 已连接 ✅");
-                // 构造返回数据
-                JSONObject result = new JSONObject();
-                try {
-                    result.put("taskId", "onConnected");
-                    result.put("data", "Billing Service 已连接 ✅" );
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-
-                // 回到主线程回调给 UniApp
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (callback != null) {
-                            callback.invoke(result);
-                        }
-                    }
-                });
             }
 
             @Override
             public void onDisconnected() {
 //                appendLog("Billing Service 已断开 ❌");
+                asynCallBack("onDisconnected", "Billing Service 已断开 ❌", callback);
             }
 
             @Override
@@ -86,25 +72,6 @@ public class BaseModule extends UniModule{
 //                appendLog("查询到商品数量: " + products.size());
                 if (!products.isEmpty()) {
                     cachedProduct = products.get(0);
-//                    appendLog("商品ID: " + cachedProduct.getProductId());
-//                    appendLog("商品信息：" + cachedProduct.getDescription());
-                    JSONObject result = new JSONObject();
-                    try {
-                        result.put("taskId", "onProductDetails");
-                        result.put("data", "商品ID: " + cachedProduct.getProductId() + "商品信息：" + cachedProduct.getDescription());
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-
-                    // 回到主线程回调给 UniApp
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (callback != null) {
-                                callback.invoke(result);
-                            }
-                        }
-                    });
                 }
                 if (!unfetched.isEmpty()) {
 //                    appendLog("未抓取商品: " + unfetched.size());
@@ -116,16 +83,68 @@ public class BaseModule extends UniModule{
 //                appendLog("购买成功 ✅: " + purchase.getProducts());
                 // 一次性商品必须消耗，否则不能再次购买
                 billingManager.consumePurchase(purchase.getPurchaseToken());
+                // 构造返回数据
+                JSONObject result = new JSONObject();
+                try {
+                    result.put("taskId", "onPurchaseSuccess");
+                    result.put("data", "购买成功，并消耗Tocken");
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                // 回到主线程回调给 UniApp
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (successPayCallback != null) {
+                            successPayCallback.invoke(result);
+                        }
+                    }
+                });
             }
 
             @Override
-            public void onPurchaseFailure(com.android.billingclient.api.BillingResult result) {
-//                appendLog("购买失败 ❌: " + result.getDebugMessage());
+            public void onPurchaseFailure(BillingResult purchaseResult) {
+//                appendLog("购买失败 ❌: " + purchaseResult.getDebugMessage());
+                // 构造返回数据
+                JSONObject result = new JSONObject();
+                try {
+                    result.put("taskId", "onPurchaseFailure");
+                    result.put("data", "购买失败 ❌: " + purchaseResult.getDebugMessage());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                // 回到主线程回调给 UniApp
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (successPayCallback != null) {
+                            successPayCallback.invoke(result);
+                        }
+                    }
+                });
             }
 
             @Override
             public void onConsumeSuccess(String purchaseToken) {
 //                appendLog("消耗成功 ✅, token=" + purchaseToken);
+
+                // 构造返回数据
+                JSONObject result = new JSONObject();
+                try {
+                    result.put("taskId", "onConsumeSuccess");
+                    result.put("data", "消费tocken成功，token=" + purchaseToken);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                // 回到主线程回调给 UniApp
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (successPayCallback != null) {
+                            successPayCallback.invoke(result);
+                        }
+                    }
+                });
             }
         });
 
@@ -133,14 +152,28 @@ public class BaseModule extends UniModule{
     }
 
     @UniJSMethod
-    public void queryProduct(String productId, @BillingClient.ProductType String type) {
-        billingManager.queryProducts(Arrays.asList(productId), type);
+    public void queryProduct(String productId, @BillingClient.ProductType String type, final UniJSCallback callback) {
+        Toast.makeText(mUniSDKInstance.getContext(), "queryProduct=" + productId, Toast.LENGTH_LONG).show();
+        billingManager.queryProducts(Arrays.asList(productId), type, callback);
     }
 
     @UniJSMethod
-    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type) {
-        billingManager.queryProducts(productIds, type);
+    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type, final UniJSCallback callback) {
+        billingManager.queryProducts(productIds, type, callback);
     }
+
+    /**
+     * 发起购买
+     *
+     * @param porductId
+     * @param callback
+     */
+    @UniJSMethod
+    public void launchPurchase(String porductId, final UniJSCallback callback) {
+        successPayCallback = callback;
+        billingManager.launchPurchase(porductId);
+    }
+
 
     // 异步方法（携带业务ID）
     @UniJSMethod(uiThread = false)
@@ -175,5 +208,27 @@ public class BaseModule extends UniModule{
                 });
             }
         }).start();
+    }
+
+
+    private void asynCallBack(String taskId, String data,final UniJSCallback callback){
+        // 构造返回数据
+        JSONObject result = new JSONObject();
+        try {
+            result.put("taskId", taskId);
+            result.put("data", "这是Java异步返回的数据:" + data);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        // 回到主线程回调给 UniApp
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                if (callback != null) {
+                    callback.invoke(result);
+                }
+            }
+        });
     }
 }

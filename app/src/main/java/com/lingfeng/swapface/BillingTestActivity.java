@@ -106,7 +106,7 @@ public class BillingTestActivity extends AppCompatActivity {
             public void onClick(View v) {
                 if (cachedProduct != null) {
                     appendLog("发起购买: " + cachedProduct.getProductId());
-                    billingManager.launchPurchase(cachedProduct);
+                    billingManager.launchPurchase(cachedProduct.getProductId());
                 } else {
                     appendLog("请先查询商品");
                 }

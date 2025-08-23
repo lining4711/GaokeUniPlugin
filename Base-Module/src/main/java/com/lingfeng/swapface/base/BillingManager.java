@@ -2,17 +2,26 @@ package com.lingfeng.swapface.base;
 
 import android.app.Activity;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSONObject;
 import com.android.billingclient.api.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import io.dcloud.feature.uniapp.bridge.UniJSCallback;
+
 public class BillingManager {
+    List<ProductDetails> mProductDetailsList = new ArrayList<>();
 
     public interface BillingCallback {
         void onConnected();
@@ -64,6 +73,20 @@ public class BillingManager {
     }
 
     public void queryProducts(List<String> productIds, @BillingClient.ProductType String type) {
+        queryProducts(productIds, type, new UniJSCallback() {
+            @Override
+            public void invoke(Object o) {
+
+            }
+
+            @Override
+            public void invokeAndKeepAlive(Object o) {
+
+            }
+        });
+    }
+
+    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type, final UniJSCallback callback) {
         List<QueryProductDetailsParams.Product> prodList = new ArrayList<>();
         for (String id : productIds) {
             prodList.add(QueryProductDetailsParams.Product.newBuilder()
@@ -78,16 +101,52 @@ public class BillingManager {
         billingClient.queryProductDetailsAsync(params, (result, productDetailsList) -> {
             if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                 // 注意：新版还可能返回未抓取产品，可进一步处理
-                callback.onProductDetails(productDetailsList.getProductDetailsList(), Collections.emptyList());
+//                callback.onProductDetails(productDetailsList.getProductDetailsList(), Collections.emptyList());
+                mProductDetailsList.clear();
+                mProductDetailsList.addAll(productDetailsList.getProductDetailsList());
+
+                JSONArray array = new JSONArray();
+                for(ProductDetails once : mProductDetailsList){
+                    array.add(once);
+                }
+                JSONObject resultAsyn = new JSONObject();
+                try {
+                    resultAsyn.put("taskId", "onProductDetails");
+                    resultAsyn.put("data", "商品信息: " + array.toJSONString());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                // 回到主线程回调给 UniApp
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (callback != null) {
+                            callback.invoke(resultAsyn);
+                        }
+                    }
+                });
+
             } else {
                 Log.e(TAG, "Query failed: " + result.getDebugMessage());
             }
         });
     }
 
-    public void launchPurchase(ProductDetails productDetails) {
+    public void launchPurchase(String productId) {
+        ProductDetails findProductDetails = null;
+        for (ProductDetails item : mProductDetailsList) {
+            if (productId.equals(item.getProductId())) {
+                findProductDetails = item;
+                break;
+            }
+        }
+        if(null == findProductDetails){
+            return;
+        }
+
         BillingFlowParams.ProductDetailsParams pdp = BillingFlowParams.ProductDetailsParams.newBuilder()
-                .setProductDetails(productDetails)
+                .setProductDetails(findProductDetails)
                 .build();
 
         BillingFlowParams flowParams = BillingFlowParams.newBuilder()
@@ -116,6 +175,7 @@ public class BillingManager {
     private final PurchasesUpdatedListener purchasesUpdatedListener = (result, purchases) -> {
         if (result.getResponseCode() == BillingClient.BillingResponseCode.OK && purchases != null) {
             for (Purchase p : purchases) {
+                // 那些购买成功了
                 callback.onPurchaseSuccess(p);
             }
         } else {
