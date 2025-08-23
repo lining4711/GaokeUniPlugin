@@ -1,41 +1,24 @@
 package com.lingfeng.swapface.base;
 
-import android.app.Activity;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
-
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
-import com.android.billingclient.api.AcknowledgePurchaseParams;
-import com.android.billingclient.api.AcknowledgePurchaseResponseListener;
 import com.android.billingclient.api.BillingClient;
-import com.android.billingclient.api.BillingClientStateListener;
-import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
-import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
-import com.android.billingclient.api.ProductDetailsResponseListener;
 import com.android.billingclient.api.Purchase;
-import com.android.billingclient.api.PurchasesResponseListener;
-import com.android.billingclient.api.PurchasesUpdatedListener;
-import com.android.billingclient.api.QueryProductDetailsParams;
-import com.android.billingclient.api.QueryProductDetailsResult;
-import com.android.billingclient.api.QueryPurchasesParams;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 import io.dcloud.feature.uniapp.bridge.UniJSCallback;
 import io.dcloud.feature.uniapp.common.UniModule;
 
-public class BaseModule extends UniModule{
+public class GooglePayModule extends UniModule{
 
     private static final String TAG = "FloatUniModule";
     private ProductDetails cachedProduct;
@@ -57,14 +40,34 @@ public class BaseModule extends UniModule{
         billingManager = new BillingManager(mUniSDKInstance.getContext(), new BillingManager.BillingCallback() {
             @Override
             public void onConnected() {
-                asynCallBack("onConnected", "Billing Service 已连接 ✅", callback);
-//                appendLog("Billing Service 已连接 ✅");
+                PayResult result = new PayResult();
+                result.setResultCode(200);
+                result.setData("Billing Service 已连接");
+
+                // 回到主线程回调给 UniApp
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (callback != null) {
+                            callback.invoke(result);
+                        }
+                    }
+                });
             }
 
             @Override
             public void onDisconnected() {
-//                appendLog("Billing Service 已断开 ❌");
-                asynCallBack("onDisconnected", "Billing Service 已断开 ❌", callback);
+                PayResult result = new PayResult();
+                result.setResultCode(300);
+                result.setErrorMsg("Billing Service 断开连接");
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (callback != null) {
+                            callback.invoke(result);
+                        }
+                    }
+                });
             }
 
             @Override
@@ -84,13 +87,9 @@ public class BaseModule extends UniModule{
                 // 一次性商品必须消耗，否则不能再次购买
                 billingManager.consumePurchase(purchase.getPurchaseToken());
                 // 构造返回数据
-                JSONObject result = new JSONObject();
-                try {
-                    result.put("taskId", "onPurchaseSuccess");
-                    result.put("data", "购买成功，并消耗Tocken");
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+                PayResult result = new PayResult();
+                result.setResultCode(200);
+                result.setData("购买成功，并消耗Tocken");
                 // 回到主线程回调给 UniApp
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
@@ -104,15 +103,10 @@ public class BaseModule extends UniModule{
 
             @Override
             public void onPurchaseFailure(BillingResult purchaseResult) {
-//                appendLog("购买失败 ❌: " + purchaseResult.getDebugMessage());
-                // 构造返回数据
-                JSONObject result = new JSONObject();
-                try {
-                    result.put("taskId", "onPurchaseFailure");
-                    result.put("data", "购买失败 ❌: " + purchaseResult.getDebugMessage());
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
+                PayResult result = new PayResult();
+                result.setResultCode(300);
+                result.setErrorMsg("购买失败: " + purchaseResult.getDebugMessage());
+
                 // 回到主线程回调给 UniApp
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
@@ -126,25 +120,22 @@ public class BaseModule extends UniModule{
 
             @Override
             public void onConsumeSuccess(String purchaseToken) {
-//                appendLog("消耗成功 ✅, token=" + purchaseToken);
-
-                // 构造返回数据
-                JSONObject result = new JSONObject();
-                try {
-                    result.put("taskId", "onConsumeSuccess");
-                    result.put("data", "消费tocken成功，token=" + purchaseToken);
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-                // 回到主线程回调给 UniApp
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (successPayCallback != null) {
-                            successPayCallback.invoke(result);
-                        }
-                    }
-                });
+//                JSONObject result = new JSONObject();
+//                try {
+//                    result.put("taskId", "onConsumeSuccess");
+//                    result.put("data", "消费tocken成功，token=" + purchaseToken);
+//                } catch (JSONException e) {
+//                    e.printStackTrace();
+//                }
+//                // 回到主线程回调给 UniApp
+//                new Handler(Looper.getMainLooper()).post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        if (successPayCallback != null) {
+//                            successPayCallback.invoke(result);
+//                        }
+//                    }
+//                });
             }
         });
 
@@ -211,7 +202,7 @@ public class BaseModule extends UniModule{
     }
 
 
-    private void asynCallBack(String taskId, String data,final UniJSCallback callback){
+    private void asynCallBack(int taskId, String data,final UniJSCallback callback){
         // 构造返回数据
         JSONObject result = new JSONObject();
         try {

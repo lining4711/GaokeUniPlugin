@@ -73,20 +73,6 @@ public class BillingManager {
     }
 
     public void queryProducts(List<String> productIds, @BillingClient.ProductType String type) {
-        queryProducts(productIds, type, new UniJSCallback() {
-            @Override
-            public void invoke(Object o) {
-
-            }
-
-            @Override
-            public void invokeAndKeepAlive(Object o) {
-
-            }
-        });
-    }
-
-    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type, final UniJSCallback callback) {
         List<QueryProductDetailsParams.Product> prodList = new ArrayList<>();
         for (String id : productIds) {
             prodList.add(QueryProductDetailsParams.Product.newBuilder()
@@ -104,32 +90,52 @@ public class BillingManager {
 //                callback.onProductDetails(productDetailsList.getProductDetailsList(), Collections.emptyList());
                 mProductDetailsList.clear();
                 mProductDetailsList.addAll(productDetailsList.getProductDetailsList());
+            }
+        });
+    }
+
+    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type, final UniJSCallback callback) {
+        List<QueryProductDetailsParams.Product> prodList = new ArrayList<>();
+        for (String id : productIds) {
+            prodList.add(QueryProductDetailsParams.Product.newBuilder()
+                    .setProductId(id)
+                    .setProductType(type)
+                    .build());
+        }
+        QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
+                .setProductList(prodList)
+                .build();
+
+        billingClient.queryProductDetailsAsync(params, (result, productDetailsList) -> {
+            PayResult resultAsyn = new PayResult();
+            if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                // 注意：新版还可能返回未抓取产品，可进一步处理
+//                callback.onProductDetails(productDetailsList.getProductDetailsList(), Collections.emptyList());
+                mProductDetailsList.clear();
+                mProductDetailsList.addAll(productDetailsList.getProductDetailsList());
 
                 JSONArray array = new JSONArray();
                 for(ProductDetails once : mProductDetailsList){
                     array.add(once);
                 }
-                JSONObject resultAsyn = new JSONObject();
-                try {
-                    resultAsyn.put("taskId", "onProductDetails");
-                    resultAsyn.put("data", "商品信息: " + array.toJSONString());
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
 
-                // 回到主线程回调给 UniApp
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (callback != null) {
-                            callback.invoke(resultAsyn);
-                        }
-                    }
-                });
-
+                resultAsyn.setResultCode(200);
+                resultAsyn.setData(array.toJSONString());
             } else {
-                Log.e(TAG, "Query failed: " + result.getDebugMessage());
+                resultAsyn.setResultCode(300);
+                resultAsyn.setErrorMsg("Query failed: " + result.getDebugMessage());
             }
+
+            // 回到主线程回调给 UniApp
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+                @Override
+                public void run() {
+                    if (callback != null) {
+                        callback.invoke(resultAsyn);
+                    }
+                }
+            });
+
         });
     }
 

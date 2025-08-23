@@ -104,12 +104,7 @@ public class BillingTestActivity extends AppCompatActivity {
         btnBuy.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (cachedProduct != null) {
-                    appendLog("发起购买: " + cachedProduct.getProductId());
-                    billingManager.launchPurchase(cachedProduct.getProductId());
-                } else {
-                    appendLog("请先查询商品");
-                }
+                billingManager.launchPurchase("faceswap_1");
             }
         });
     }
