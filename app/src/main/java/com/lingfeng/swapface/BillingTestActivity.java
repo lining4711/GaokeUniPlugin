@@ -26,7 +26,7 @@ public class BillingTestActivity extends AppCompatActivity {
     private ProductDetails cachedProduct;
 
     private TextView logView;
-    private Button btnQuery, btnBuy;
+    private Button btnQuery, btnBuy, btnStartConnect;
 
     @SuppressLint("MissingInflatedId")
     @Override
@@ -35,6 +35,7 @@ public class BillingTestActivity extends AppCompatActivity {
         setContentView(R.layout.activity_billing_test);
 
         logView = findViewById(R.id.tvLog);
+        btnStartConnect = findViewById(R.id.btnStartConnect);
         btnQuery = findViewById(R.id.btnQuery);
         btnBuy = findViewById(R.id.btnBuy);
 
@@ -55,6 +56,7 @@ public class BillingTestActivity extends AppCompatActivity {
                 if (!products.isEmpty()) {
                     cachedProduct = products.get(0);
                     appendLog("商品ID: " + cachedProduct.getProductId());
+                    appendLog("商品信息：" + cachedProduct.getDescription());
                 }
                 if (!unfetched.isEmpty()) {
                     appendLog("未抓取商品: " + unfetched.size());
@@ -79,8 +81,14 @@ public class BillingTestActivity extends AppCompatActivity {
             }
         });
 
-        // 开始连接
-        billingManager.startConnection();
+
+        btnStartConnect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // 开始连接
+                billingManager.startConnection();
+            }
+        });
 
         btnQuery.setOnClickListener(new View.OnClickListener() {
             @Override

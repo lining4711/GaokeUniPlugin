@@ -27,6 +27,7 @@ import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -37,6 +38,8 @@ import io.dcloud.feature.uniapp.common.UniModule;
 public class BaseModule extends UniModule{
 
     private static final String TAG = "FloatUniModule";
+    private ProductDetails cachedProduct;
+    private BillingManager billingManager = null;
 
     @UniJSMethod
     public void test(){
@@ -47,214 +50,96 @@ public class BaseModule extends UniModule{
         Toast.makeText(mUniSDKInstance.getContext(), PayUtils.callNative(), Toast.LENGTH_LONG).show();
     }
 
-    private BillingClient billingClient;
-
-    // 购买结果监听
-    private PurchasesUpdatedListener purchasesUpdatedListener = new PurchasesUpdatedListener() {
-        @Override
-        public void onPurchasesUpdated(@NonNull BillingResult billingResult, List<Purchase> purchases) {
-            Toast.makeText(mUniSDKInstance.getContext(), "onPurchasesUpdated", Toast.LENGTH_LONG).show();
-
-            JSONObject result = new JSONObject();
-            result.put("responseCode", billingResult.getResponseCode());
-            result.put("debugMessage", billingResult.getDebugMessage());
-
-            if (purchases != null && purchases.size() > 0) {
-                JSONArray purchaseArray = new JSONArray();
-                for (Purchase purchase : purchases) {
-                    JSONObject obj = new JSONObject();
-                    obj.put("orderId", purchase.getOrderId());
-                    obj.put("productIds", purchase.getProducts());
-                    obj.put("purchaseToken", purchase.getPurchaseToken());
-                    obj.put("originalJson", purchase.getOriginalJson());
-                    purchaseArray.add(obj);
-                }
-                result.put("purchases", purchaseArray);
-            }
-
-            Toast.makeText(mUniSDKInstance.getContext(), "onPurchasesUpdated = " + result.toJSONString(), Toast.LENGTH_LONG).show();
-
-
-            mUniSDKInstance.fireGlobalEventCallback("IAP_PURCHASE_UPDATE", result);
-        }
-    };
-
-    // 初始化 BillingClient
     @UniJSMethod
-    public void initClient() {
-        Toast.makeText(mUniSDKInstance.getContext(), "initClient", Toast.LENGTH_LONG).show();
-
-        if (billingClient == null) {
-            billingClient = BillingClient.newBuilder(mUniSDKInstance.getContext())
-                    .setListener(purchasesUpdatedListener)
-                    .enablePendingPurchases(PendingPurchasesParams.newBuilder().build())
-                    .build();
-        }
-
-        billingClient.startConnection(new BillingClientStateListener() {
+    public void initClient(final UniJSCallback callback) {
+        billingManager = new BillingManager(mUniSDKInstance.getContext(), new BillingManager.BillingCallback() {
             @Override
-            public void onBillingSetupFinished(@NonNull BillingResult billingResult) {
+            public void onConnected() {
+//                appendLog("Billing Service 已连接 ✅");
+                // 构造返回数据
                 JSONObject result = new JSONObject();
-                result.put("responseCode", billingResult.getResponseCode());
-                result.put("msg", billingResult.getDebugMessage());
-
-                Toast.makeText(mUniSDKInstance.getContext(), "onBillingSetupFinished", Toast.LENGTH_LONG).show();
-
-                mUniSDKInstance.fireGlobalEventCallback("IAP_INIT", result);
-            }
-
-            @Override
-            public void onBillingServiceDisconnected() {
-                mUniSDKInstance.fireGlobalEventCallback("IAP_DISCONNECT", new JSONObject());
-            }
-        });
-    }
-
-    // 查询商品详情
-    @UniJSMethod(uiThread = true)
-    public void queryProduct(String productId, String productType) {
-        Toast.makeText(mUniSDKInstance.getContext(), "queryProduct = " + productId, Toast.LENGTH_LONG).show();
-
-
-        List<QueryProductDetailsParams.Product> productList = new ArrayList<QueryProductDetailsParams.Product>();
-        productList.add(
-                QueryProductDetailsParams.Product.newBuilder()
-                        .setProductId(productId)
-                        .setProductType(productType) // "inapp" 或 "subs"
-                        .build()
-        );
-
-        Toast.makeText(mUniSDKInstance.getContext(), "productList = " + productList.get(0).toString(), Toast.LENGTH_LONG).show();
-
-        QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
-                .setProductList(productList)
-                .build();
-
-        Toast.makeText(mUniSDKInstance.getContext(), "QueryProductDetailsParams = " + params.toString(), Toast.LENGTH_LONG).show();
-
-        billingClient.queryProductDetailsAsync(params, new ProductDetailsResponseListener() {
-            @Override
-            public void onProductDetailsResponse(@NonNull BillingResult billingResult,
-                                                 @NonNull QueryProductDetailsResult queryProductDetailsResult) {
-                JSONObject result = new JSONObject();
-                result.put("responseCode", billingResult.getResponseCode());
-
-                Toast.makeText(mUniSDKInstance.getContext(), "onProductDetailsResponse = " + result.toJSONString(), Toast.LENGTH_LONG).show();
-
-                Toast.makeText(mUniSDKInstance.getContext(), "QueryProductDetailsResult = " + queryProductDetailsResult.getProductDetailsList().size(), Toast.LENGTH_LONG).show();
-
-
-                JSONArray array = new JSONArray();
-                List<ProductDetails> productDetailsList = queryProductDetailsResult.getProductDetailsList();
-                if (productDetailsList != null) {
-                    for (ProductDetails details : productDetailsList) {
-                        JSONObject obj = new JSONObject();
-                        obj.put("productId", details.getProductId());
-                        obj.put("title", details.getTitle());
-                        obj.put("description", details.getDescription());
-                        if (details.getOneTimePurchaseOfferDetails() != null) {
-                            obj.put("price", details.getOneTimePurchaseOfferDetails().getFormattedPrice());
-                        }
-                        array.add(obj);
-                    }
+                try {
+                    result.put("taskId", "onConnected");
+                    result.put("data", "Billing Service 已连接 ✅" );
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
-                result.put("products", array);
 
-                Toast.makeText(mUniSDKInstance.getContext(), "onProductDetailsResponse = " + array.toJSONString(), Toast.LENGTH_LONG).show();
-
-                mUniSDKInstance.fireGlobalEventCallback("IAP_PRODUCT_QUERY", result);
-            }
-        });
-    }
-
-    // 发起购买
-    // 发起购买
-    @UniJSMethod(uiThread = true)
-    public void purchase(final String productId, final String productType) {
-        List<QueryProductDetailsParams.Product> productList = new ArrayList<QueryProductDetailsParams.Product>();
-        productList.add(
-                QueryProductDetailsParams.Product.newBuilder()
-                        .setProductId(productId)
-                        .setProductType(productType)
-                        .build()
-        );
-
-        QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
-                .setProductList(productList)
-                .build();
-
-        billingClient.queryProductDetailsAsync(params, new ProductDetailsResponseListener() {
-            @Override
-            public void onProductDetailsResponse(@NonNull BillingResult billingResult,
-                                                 @NonNull QueryProductDetailsResult queryProductDetailsResult) {
-                List<ProductDetails> productDetailsList = queryProductDetailsResult.getProductDetailsList();
-                if (productDetailsList != null && productDetailsList.size() > 0) {
-                    ProductDetails productDetails = productDetailsList.get(0);
-
-                    BillingFlowParams billingFlowParams = BillingFlowParams.newBuilder()
-                            .setProductDetailsParamsList(
-                                    Collections.singletonList(
-                                            BillingFlowParams.ProductDetailsParams.newBuilder()
-                                                    .setProductDetails(productDetails)
-                                                    .build()
-                                    )
-                            )
-                            .build();
-
-                    Activity activity = (Activity) mUniSDKInstance.getContext();
-                    billingClient.launchBillingFlow(activity, billingFlowParams);
-                }
-            }
-        });
-    }
-
-    // 查询购买记录
-    @UniJSMethod(uiThread = true)
-    public void queryPurchases(String productType) {
-        billingClient.queryPurchasesAsync(
-                QueryPurchasesParams.newBuilder()
-                        .setProductType(productType)
-                        .build(),
-                new PurchasesResponseListener() {
+                // 回到主线程回调给 UniApp
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
-                    public void onQueryPurchasesResponse(@NonNull BillingResult billingResult, @NonNull List<Purchase> purchases) {
-                        JSONObject result = new JSONObject();
-                        result.put("responseCode", billingResult.getResponseCode());
-
-                        JSONArray array = new JSONArray();
-                        for (Purchase purchase : purchases) {
-                            JSONObject obj = new JSONObject();
-                            obj.put("orderId", purchase.getOrderId());
-                            obj.put("purchaseToken", purchase.getPurchaseToken());
-                            obj.put("products", purchase.getProducts());
-                            obj.put("originalJson", purchase.getOriginalJson());
-                            array.add(obj);
+                    public void run() {
+                        if (callback != null) {
+                            callback.invoke(result);
                         }
-                        result.put("purchases", array);
-
-                        mUniSDKInstance.fireGlobalEventCallback("IAP_QUERY_PURCHASES", result);
                     }
-                }
-        );
-    }
+                });
+            }
 
-    // 确认购买
-    @UniJSMethod(uiThread = true)
-    public void acknowledgePurchase(final String purchaseToken) {
-        AcknowledgePurchaseParams params = AcknowledgePurchaseParams.newBuilder()
-                .setPurchaseToken(purchaseToken)
-                .build();
-
-        billingClient.acknowledgePurchase(params, new AcknowledgePurchaseResponseListener() {
             @Override
-            public void onAcknowledgePurchaseResponse(@NonNull BillingResult billingResult) {
-                JSONObject result = new JSONObject();
-                result.put("responseCode", billingResult.getResponseCode());
-                result.put("purchaseToken", purchaseToken);
+            public void onDisconnected() {
+//                appendLog("Billing Service 已断开 ❌");
+            }
 
-                mUniSDKInstance.fireGlobalEventCallback("IAP_ACKNOWLEDGE", result);
+            @Override
+            public void onProductDetails(List<ProductDetails> products, List<ProductDetails> unfetched) {
+//                appendLog("查询到商品数量: " + products.size());
+                if (!products.isEmpty()) {
+                    cachedProduct = products.get(0);
+//                    appendLog("商品ID: " + cachedProduct.getProductId());
+//                    appendLog("商品信息：" + cachedProduct.getDescription());
+                    JSONObject result = new JSONObject();
+                    try {
+                        result.put("taskId", "onProductDetails");
+                        result.put("data", "商品ID: " + cachedProduct.getProductId() + "商品信息：" + cachedProduct.getDescription());
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                    // 回到主线程回调给 UniApp
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (callback != null) {
+                                callback.invoke(result);
+                            }
+                        }
+                    });
+                }
+                if (!unfetched.isEmpty()) {
+//                    appendLog("未抓取商品: " + unfetched.size());
+                }
+            }
+
+            @Override
+            public void onPurchaseSuccess(Purchase purchase) {
+//                appendLog("购买成功 ✅: " + purchase.getProducts());
+                // 一次性商品必须消耗，否则不能再次购买
+                billingManager.consumePurchase(purchase.getPurchaseToken());
+            }
+
+            @Override
+            public void onPurchaseFailure(com.android.billingclient.api.BillingResult result) {
+//                appendLog("购买失败 ❌: " + result.getDebugMessage());
+            }
+
+            @Override
+            public void onConsumeSuccess(String purchaseToken) {
+//                appendLog("消耗成功 ✅, token=" + purchaseToken);
             }
         });
+
+        billingManager.startConnection();
+    }
+
+    @UniJSMethod
+    public void queryProduct(String productId, @BillingClient.ProductType String type) {
+        billingManager.queryProducts(Arrays.asList(productId), type);
+    }
+
+    @UniJSMethod
+    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type) {
+        billingManager.queryProducts(productIds, type);
     }
 
     // 异步方法（携带业务ID）

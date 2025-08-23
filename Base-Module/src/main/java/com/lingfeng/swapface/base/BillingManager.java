@@ -1,9 +1,13 @@
 package com.lingfeng.swapface.base;
 
 import android.app.Activity;
+import android.content.Context;
 import android.util.Log;
+
 import androidx.annotation.NonNull;
+
 import com.android.billingclient.api.*;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -12,22 +16,27 @@ public class BillingManager {
 
     public interface BillingCallback {
         void onConnected();
+
         void onDisconnected();
+
         void onProductDetails(List<ProductDetails> products, List<ProductDetails> unfetchedProducts);
+
         void onPurchaseSuccess(Purchase purchase);
+
         void onPurchaseFailure(BillingResult result);
+
         void onConsumeSuccess(String purchaseToken);
     }
 
     private static final String TAG = "BillingManager";
     private final BillingClient billingClient;
-    private final Activity activity;
+    private final Context context;
     private BillingCallback callback = null;
 
-    public BillingManager(Activity activity, BillingCallback callback) {
-        this.activity = activity;
+    public BillingManager(Context context, BillingCallback callback) {
+        this.context = context;
         this.callback = callback;
-        billingClient = BillingClient.newBuilder(activity)
+        billingClient = BillingClient.newBuilder(context)
                 .setListener(purchasesUpdatedListener)
                 .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
                 .enableAutoServiceReconnection()
@@ -45,6 +54,7 @@ public class BillingManager {
                     Log.e(TAG, "Connection failed: " + result.getDebugMessage());
                 }
             }
+
             @Override
             public void onBillingServiceDisconnected() {
                 Log.w(TAG, "Disconnected from Billing");
@@ -84,7 +94,7 @@ public class BillingManager {
                 .setProductDetailsParamsList(Collections.singletonList(pdp))
                 .build();
 
-        BillingResult result = billingClient.launchBillingFlow(activity, flowParams);
+        BillingResult result = billingClient.launchBillingFlow((Activity) context, flowParams);
         if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
             Log.e(TAG, "Launch purchase failed: " + result.getDebugMessage());
         }
@@ -96,7 +106,7 @@ public class BillingManager {
                 .build();
         billingClient.consumeAsync(cp, (result, token) -> {
             if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                callback.onConsumeSuccess(token);
+                callback.onConsumeSuccess(token); //一次性商品购买之后 消耗掉
             } else {
                 Log.e(TAG, "Consume failed: " + result.getDebugMessage());
             }

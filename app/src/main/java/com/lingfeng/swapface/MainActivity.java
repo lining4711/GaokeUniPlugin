@@ -21,6 +21,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void callModule(View view){
 //        Toast.makeText(this, PayUtils.callNative(), Toast.LENGTH_LONG).show();
-        startActivity(new Intent(this, GooglePayTestActivity.class));
+        startActivity(new Intent(this, BillingTestActivity.class));
     }
 }
