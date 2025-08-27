@@ -89,7 +89,7 @@ public class GooglePayModule extends UniModule{
                 // 构造返回数据
                 PayResult result = new PayResult();
                 result.setResultCode(200);
-                result.setData("购买成功，并消耗Tocken");
+                result.setData("购买成功");
                 // 回到主线程回调给 UniApp
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
@@ -105,7 +105,7 @@ public class GooglePayModule extends UniModule{
             public void onPurchaseFailure(BillingResult purchaseResult) {
                 PayResult result = new PayResult();
                 result.setResultCode(300);
-                result.setErrorMsg("购买失败: " + purchaseResult.getDebugMessage());
+                result.setErrorMsg("购买失败");
 
                 // 回到主线程回调给 UniApp
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
@@ -144,7 +144,6 @@ public class GooglePayModule extends UniModule{
 
     @UniJSMethod
     public void queryProduct(String productId, @BillingClient.ProductType String type, final UniJSCallback callback) {
-        Toast.makeText(mUniSDKInstance.getContext(), "queryProduct=" + productId, Toast.LENGTH_LONG).show();
         billingManager.queryProducts(Arrays.asList(productId), type, callback);
     }
 
@@ -156,13 +155,13 @@ public class GooglePayModule extends UniModule{
     /**
      * 发起购买
      *
-     * @param porductId
+     * @param productId
      * @param callback
      */
     @UniJSMethod
-    public void launchPurchase(String porductId, final UniJSCallback callback) {
+    public void launchPurchase(String productId, final UniJSCallback callback) {
         successPayCallback = callback;
-        billingManager.launchPurchase(porductId);
+        billingManager.launchPurchase(productId);
     }
 
 
@@ -199,27 +198,5 @@ public class GooglePayModule extends UniModule{
                 });
             }
         }).start();
-    }
-
-
-    private void asynCallBack(int taskId, String data,final UniJSCallback callback){
-        // 构造返回数据
-        JSONObject result = new JSONObject();
-        try {
-            result.put("taskId", taskId);
-            result.put("data", "这是Java异步返回的数据:" + data);
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-        // 回到主线程回调给 UniApp
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                if (callback != null) {
-                    callback.invoke(result);
-                }
-            }
-        });
     }
 }

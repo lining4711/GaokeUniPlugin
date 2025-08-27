@@ -113,9 +113,6 @@ public class BaseModuleOld extends UniModule{
     // 查询商品详情
     @UniJSMethod(uiThread = true)
     public void queryProduct(String productId, String productType) {
-        Toast.makeText(mUniSDKInstance.getContext(), "queryProduct = " + productId, Toast.LENGTH_LONG).show();
-
-
         List<QueryProductDetailsParams.Product> productList = new ArrayList<QueryProductDetailsParams.Product>();
         productList.add(
                 QueryProductDetailsParams.Product.newBuilder()

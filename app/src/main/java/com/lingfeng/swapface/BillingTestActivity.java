@@ -72,7 +72,7 @@ public class BillingTestActivity extends AppCompatActivity {
 
             @Override
             public void onPurchaseFailure(com.android.billingclient.api.BillingResult result) {
-                appendLog("购买失败 ❌: " + result.getDebugMessage());
+                appendLog("购买失败: " + result.getDebugMessage());
             }
 
             @Override
