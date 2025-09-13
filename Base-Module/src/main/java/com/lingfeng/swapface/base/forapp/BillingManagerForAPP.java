@@ -5,6 +5,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -340,20 +341,44 @@ public class BillingManagerForAPP {
 
         // 执行查询
         billingClient.queryPurchasesAsync(params, (billingResult, purchases) -> {
-            JSONObject resultAsyn = new JSONObject();
+//            JSONObject resultAsyn = new JSONObject();
+//            try {
+//                if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+//                    resultAsyn.put("code", 200);
+//                    resultAsyn.put("data", JsonUtils.toString(purchases));
+//                } else {
+//                    resultAsyn.put("code", 300);
+//                    resultAsyn.put("errorMsg", "queryPurchases failed,errorCode: " + billingResult.getResponseCode());
+//                }
+//            } catch (JSONException e) {
+//                throw new RuntimeException(e);
+//            }
+
+//            appUsedCallBack.responseData(resultAsyn);
+
+            JSONObject result = new JSONObject();
             try {
                 if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                    resultAsyn.put("code", 200);
-                    resultAsyn.put("data", JsonUtils.toString(purchases));
+                    result.put("code", 200);
+                    JSONArray array = new JSONArray();
+                    for (Purchase purchase : purchases) {
+                        JSONObject p = new JSONObject();
+                        p.put("orderId", purchase.getOrderId());
+                        p.put("productId", purchase.getProducts().toString());
+                        p.put("purchaseTime", purchase.getPurchaseTime());
+                        p.put("purchaseState", purchase.getPurchaseState());
+                        array.put(p);
+                    }
+                    result.put("data", array);
                 } else {
-                    resultAsyn.put("code", 300);
-                    resultAsyn.put("errorMsg", "queryPurchases failed,errorCode: " + billingResult.getResponseCode());
+                    result.put("code", 300);
+                    result.put("errorMsg", "queryPurchases failed: " + billingResult.getDebugMessage());
                 }
             } catch (JSONException e) {
-                throw new RuntimeException(e);
+                Log.e(TAG, "JSON 构建失败：" + e.getLocalizedMessage());
             }
 
-            appUsedCallBack.responseData(resultAsyn);
+            appUsedCallBack.responseData(result);
         });
     }
 

@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import io.dcloud.feature.uniapp.AbsSDKInstance;
 import io.dcloud.feature.uniapp.bridge.UniJSCallback;
 
 public class BillingManager {
@@ -40,6 +41,8 @@ public class BillingManager {
     private final BillingClient billingClient;
     private final Context context;
     private BillingCallback coreCallback = null;
+
+    private UniJSCallback fromVueCallback;
 
     private List<ProductDetails> mProductDetailsList = new ArrayList<>();
 
@@ -51,6 +54,10 @@ public class BillingManager {
         void onConnected();
 
         void onDisconnected();
+
+        void onProductDetails(List<ProductDetails> products, List<ProductDetails> unfetchedProducts);
+
+        void onProductDetailsFailed(int code, String errorMsg);
 
         void onPurchaseSuccess(Purchase purchase);
 
@@ -100,7 +107,7 @@ public class BillingManager {
         });
     }
 
-    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type, final UniJSCallback callback) {
+    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type) {
         List<QueryProductDetailsParams.Product> prodList = new ArrayList<>();
         for (String id : productIds) {
             prodList.add(QueryProductDetailsParams.Product.newBuilder()
@@ -113,32 +120,15 @@ public class BillingManager {
                 .build();
 
         billingClient.queryProductDetailsAsync(params, (result, productDetailsList) -> {
-            JSONObject resultAsyn = new JSONObject();
-            try {
-                if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                    // 注意：新版还可能返回未抓取产品，可进一步处理
-//                callback.onProductDetails(productDetailsList.getProductDetailsList(), Collections.emptyList());
-                    mProductDetailsList.clear();
-                    mProductDetailsList.addAll(productDetailsList.getProductDetailsList());
-                    resultAsyn.put("code", 200);
-                    resultAsyn.put("data", JsonUtils.convertToJSONArray(mProductDetailsList));
+            if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                // 注意：新版还可能返回未抓取产品，可进一步处理
+                mProductDetailsList.clear();
+                mProductDetailsList.addAll(productDetailsList.getProductDetailsList());
 
-                } else {
-                    resultAsyn.put("code", 300);
-                    resultAsyn.put("errorMsg", "queryProductDetailsAsync failed, errorCode: " + result.getResponseCode());
-                }
-            } catch (Exception e) {
-
+                coreCallback.onProductDetails(productDetailsList.getProductDetailsList(), Collections.emptyList());
+            } else {
+                coreCallback.onProductDetailsFailed(300, "queryProductDetailsAsync failed, errorCode: " + result.getResponseCode());
             }
-
-            new Handler(Looper.getMainLooper()).post(new Runnable() {
-                @Override
-                public void run() {
-                    if (callback != null) {
-                        callback.invoke(resultAsyn.toString());
-                    }
-                }
-            });
         });
     }
 
@@ -395,7 +385,9 @@ public class BillingManager {
         });
     }
 
-    public void queryPurchases(String productType, final UniJSCallback callback) {
+    public void queryPurchases(String productType, final UniJSCallback callback, AbsSDKInstance sDKInstance) {
+        Toast.makeText(sDKInstance.getContext(), "queryPurchases", Toast.LENGTH_LONG).show();
+
         billingClient.queryPurchasesAsync(
                 QueryPurchasesParams.newBuilder()
                         .setProductType(productType)
@@ -403,25 +395,34 @@ public class BillingManager {
                 new PurchasesResponseListener() {
                     @Override
                     public void onQueryPurchasesResponse(@NonNull BillingResult billingResult, @NonNull List<Purchase> purchases) {
-                        JSONObject resultAsyn = new JSONObject();
+                        JSONObject result = new JSONObject();
                         try {
                             if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                                resultAsyn.put("code", 200);
-                                resultAsyn.put("data", JsonUtils.toString(purchases));
+                                result.put("code", 200);
+                                JSONArray array = new JSONArray();
+                                for (Purchase purchase : purchases) {
+                                    JSONObject p = new JSONObject();
+                                    p.put("orderId", purchase.getOrderId());
+                                    p.put("productId", purchase.getProducts().toString());
+                                    p.put("purchaseTime", purchase.getPurchaseTime());
+                                    p.put("purchaseState", purchase.getPurchaseState());
+                                    array.put(p);
+                                }
+                                result.put("data", array);
                             } else {
-                                resultAsyn.put("code", 300);
-                                resultAsyn.put("errorMsg", "queryPurchases failed, errorCode: " + billingResult.getDebugMessage());
+                                result.put("code", 300);
+                                result.put("errorMsg", "queryPurchases failed: " + billingResult.getDebugMessage());
                             }
-                        } catch (Exception e) {
-                            Log.e(TAG, e.getLocalizedMessage());
+                        } catch (JSONException e) {
+                            Log.e(TAG, "JSON 构建失败：" + e.getLocalizedMessage());
+                            Toast.makeText(sDKInstance.getContext(), "JSON 构建失败：" + e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
                         }
 
-                        // 回到主线程回调给 UniApp
                         new Handler(Looper.getMainLooper()).post(new Runnable() {
                             @Override
                             public void run() {
                                 if (callback != null) {
-                                    callback.invoke(resultAsyn.toString());
+                                    callback.invokeAndKeepAlive(result); // true = keepAlive，可多次回调
                                 }
                             }
                         });

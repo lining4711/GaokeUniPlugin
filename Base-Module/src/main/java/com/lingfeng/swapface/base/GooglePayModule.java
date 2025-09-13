@@ -13,6 +13,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
@@ -81,6 +82,58 @@ public class GooglePayModule extends UniModule {
                 });
             }
 
+            @Override
+            public void onProductDetails(List<ProductDetails> products, List<ProductDetails> unfetched) {
+                JSONObject resultAsyn = new JSONObject();
+                try {
+                    if (products.isEmpty()) {
+                        resultAsyn.put("code", 300);
+                        resultAsyn.put("errorMsg", "未查询到商品，确认参数");
+
+                    } else {
+                        resultAsyn.put("code", 200);
+                        resultAsyn.put("data", JsonUtils.convertToJSONArray(products));
+                    }
+                } catch (Exception e) {
+
+                }
+
+                Toast.makeText(mUniSDKInstance.getContext(), "onProductDetails" + resultAsyn.toString() , Toast.LENGTH_LONG).show();
+
+
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (successPayCallback != null) {
+                            Toast.makeText(mUniSDKInstance.getContext(), "222onProductDetails" + resultAsyn.toString() , Toast.LENGTH_LONG).show();
+
+                            successPayCallback.invoke(resultAsyn.toString());
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onProductDetailsFailed(int code, String errorMsg) {
+                JSONObject resultAsyn = new JSONObject();
+                try {
+                    resultAsyn.put("code", code);
+                    resultAsyn.put("errorMsg", errorMsg);
+                } catch (Exception e) {
+
+                }
+                Toast.makeText(mUniSDKInstance.getContext(), "onProductDetailsFailed" + resultAsyn.toString() , Toast.LENGTH_LONG).show();
+
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (successPayCallback != null) {
+                            successPayCallback.invoke(resultAsyn.toString());
+                        }
+                    }
+                });
+            }
+
             /**
              * 所有的购买走到这里
              * @param purchase
@@ -106,7 +159,7 @@ public class GooglePayModule extends UniModule {
 
                 try {
                     JSONObject resultAsyn = new JSONObject();
-                    resultAsyn.put("code",200);
+                    resultAsyn.put("code", 200);
                     resultAsyn.put("data", purchase.getPurchaseToken()); //返回订阅成功的tocken
 
                     // 回到主线程回调给 UniApp
@@ -168,14 +221,23 @@ public class GooglePayModule extends UniModule {
         billingManager.startConnection();
     }
 
+    /**
+     * 不能直接将 UniJSCallback callback 设为参数，超出作用域了
+     *
+     * @param productId
+     * @param type
+     * @param callback
+     */
     @UniJSMethod
     public void queryProduct(String productId, @BillingClient.ProductType String type, final UniJSCallback callback) {
-        billingManager.queryProducts(Arrays.asList(productId), type, callback);
+        successPayCallback = callback;
+        billingManager.queryProducts(Arrays.asList(productId), type);
     }
 
     @UniJSMethod
     public void queryProducts(List<String> productIds, @BillingClient.ProductType String type, final UniJSCallback callback) {
-        billingManager.queryProducts(productIds, type, callback);
+        successPayCallback = callback;
+        billingManager.queryProducts(productIds, type);
     }
 
     /**
@@ -200,11 +262,11 @@ public class GooglePayModule extends UniModule {
      * 查询购买
      *
      * @param productType
-     * @param callback
+     * @param fromVueCallback
      */
     @UniJSMethod(uiThread = true)
-    public void queryPurchases(String productType, final UniJSCallback callback) {
-        billingManager.queryPurchases(productType, callback);
+    public void queryPurchases(String productType, final UniJSCallback fromVueCallback) {
+        billingManager.queryPurchases(productType, fromVueCallback, mUniSDKInstance);
     }
 
 
