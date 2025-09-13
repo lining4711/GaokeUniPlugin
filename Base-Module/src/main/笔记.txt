@@ -1,0 +1,21 @@
+1、先建立连接
+2、发起查询，先查询内购商品或者订阅商品
+3、再发起购买。 购买内购商品之后要消耗商品的tocken，否则只是购买未消耗费
+4、消耗了的内购商品，查询购买记录查询不到的
+
+订阅商品 (SUBS)
+不会被消耗，确认（acknowledgePurchase）后，仍然能用 queryPurchasesAsync(ProductType.SUBS) 查到。
+
+一次性商品 (INAPP)
+必须要么：
+调用 acknowledgePurchase() → 订单永久存在，用户不能再次购买同一个商品。
+调用 consumeAsync() → 订单消耗掉，允许用户再次购买，但 queryPurchasesAsync() 查不到。。
+
+
+
+没有确认 (acknowledge) 购买
+Google Play 规定：如果你在 onPurchasesUpdated() 里不调用
+acknowledgePurchase() 或 consumeAsync()，
+那么这笔订单会被视为「未确认」，几小时后就会退款。
+在退款之前，这种订单不会出现在 queryPurchasesAsync() 结果里。
+

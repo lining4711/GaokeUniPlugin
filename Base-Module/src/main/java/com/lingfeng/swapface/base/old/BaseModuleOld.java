@@ -1,4 +1,4 @@
-package com.lingfeng.swapface.base;
+package com.lingfeng.swapface.base.old;
 
 import android.app.Activity;
 import android.os.Handler;
@@ -25,6 +25,7 @@ import com.android.billingclient.api.PurchasesUpdatedListener;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
+import com.lingfeng.swapface.base.PayUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;

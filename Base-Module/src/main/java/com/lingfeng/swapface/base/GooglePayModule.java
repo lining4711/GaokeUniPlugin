@@ -4,12 +4,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 
-import com.alibaba.fastjson.JSONException;
-import com.alibaba.fastjson.JSONObject;
 import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingResult;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.Arrays;
 import java.util.List;
@@ -18,16 +19,15 @@ import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 import io.dcloud.feature.uniapp.bridge.UniJSCallback;
 import io.dcloud.feature.uniapp.common.UniModule;
 
-public class GooglePayModule extends UniModule{
+public class GooglePayModule extends UniModule {
 
     private static final String TAG = "FloatUniModule";
-    private ProductDetails cachedProduct;
     private BillingManager billingManager = null;
 
     private UniJSCallback successPayCallback;
 
     @UniJSMethod
-    public void test(){
+    public void test() {
         showToast();
     }
 
@@ -40,16 +40,20 @@ public class GooglePayModule extends UniModule{
         billingManager = new BillingManager(mUniSDKInstance.getContext(), new BillingManager.BillingCallback() {
             @Override
             public void onConnected() {
-                PayResult result = new PayResult();
-                result.setResultCode(200);
-                result.setData("Billing Service 已连接");
+                JSONObject resultAsyn = new JSONObject();
+                try {
+                    resultAsyn.put("code", 200);
+                    resultAsyn.put("data", "Billing Service 已连接");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
 
                 // 回到主线程回调给 UniApp
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
                         if (callback != null) {
-                            callback.invoke(result);
+                            callback.invoke(resultAsyn.toString());
                         }
                     }
                 });
@@ -57,65 +61,87 @@ public class GooglePayModule extends UniModule{
 
             @Override
             public void onDisconnected() {
-                PayResult result = new PayResult();
-                result.setResultCode(300);
-                result.setErrorMsg("Billing Service 断开连接");
+                JSONObject resultAsyn = new JSONObject();
+
+                try {
+                    resultAsyn.put("code", 300);
+                    resultAsyn.put("errorMsg", "断开连接");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+
+                // 回到主线程回调给 UniApp
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
                         if (callback != null) {
-                            callback.invoke(result);
+                            callback.invoke(resultAsyn.toString());
                         }
                     }
                 });
             }
 
-            @Override
-            public void onProductDetails(List<ProductDetails> products, List<ProductDetails> unfetched) {
-//                appendLog("查询到商品数量: " + products.size());
-                if (!products.isEmpty()) {
-                    cachedProduct = products.get(0);
-                }
-                if (!unfetched.isEmpty()) {
-//                    appendLog("未抓取商品: " + unfetched.size());
-                }
-            }
-
+            /**
+             * 所有的购买走到这里
+             * @param purchase
+             */
             @Override
             public void onPurchaseSuccess(Purchase purchase) {
-//                appendLog("购买成功 ✅: " + purchase.getProducts());
-                // 一次性商品必须消耗，否则不能再次购买
-                billingManager.consumePurchase(purchase.getPurchaseToken());
-                // 构造返回数据
-                PayResult result = new PayResult();
-                result.setResultCode(200);
-                result.setData("购买成功");
-                // 回到主线程回调给 UniApp
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (successPayCallback != null) {
-                            successPayCallback.invoke(result);
+                for (String productId : purchase.getProducts()) {
+                    for (ProductDetails productDetails : billingManager.getProductDetailsList()) {
+                        if (productDetails == null) continue;
+
+                        if (productId.equals(productDetails.getProductId())) {
+                            if (BillingClient.ProductType.SUBS.equals(productDetails.getProductType())) {
+                                // 订阅消耗：acknowledge
+                                // 一次性解锁型商品 → 应该用 acknowledgePurchase()，才能在 queryPurchasesAsync() 查到记录
+                                billingManager.acknowledgePurchase(purchase.getPurchaseToken());
+                            } else if (BillingClient.ProductType.INAPP.equals(productDetails.getProductType())) {
+                                // 一次性商品必须消耗，否则不能再次购买(这里不再区分是消耗性还是非消耗性，由业务自己定义)
+                                billingManager.consumePurchase(purchase.getPurchaseToken());
+                            }
                         }
                     }
-                });
+                }
+
+                try {
+                    JSONObject resultAsyn = new JSONObject();
+                    resultAsyn.put("code",200);
+                    resultAsyn.put("data", purchase.getPurchaseToken()); //返回订阅成功的tocken
+
+                    // 回到主线程回调给 UniApp
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (successPayCallback != null) {
+                                successPayCallback.invoke(resultAsyn.toString());
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+
+                }
             }
 
             @Override
             public void onPurchaseFailure(BillingResult purchaseResult) {
-                PayResult result = new PayResult();
-                result.setResultCode(300);
-                result.setErrorMsg("购买失败");
+                try {
+                    PayResult resultAsyn = new PayResult();
+                    resultAsyn.setResultCode(300);
+                    resultAsyn.setErrorMsg("onPurchaseFailure, errorCode" + purchaseResult.getResponseCode());
 
-                // 回到主线程回调给 UniApp
-                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (successPayCallback != null) {
-                            successPayCallback.invoke(result);
+                    // 回到主线程回调给 UniApp
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (successPayCallback != null) {
+                                successPayCallback.invoke(resultAsyn.toString());
+                            }
                         }
-                    }
-                });
+                    });
+                } catch (Exception e) {
+
+                }
             }
 
             @Override
@@ -153,7 +179,7 @@ public class GooglePayModule extends UniModule{
     }
 
     /**
-     * 发起购买
+     * 发起购买  包括内购以及订阅购买
      *
      * @param productId
      * @param callback
@@ -162,6 +188,59 @@ public class GooglePayModule extends UniModule{
     public void launchPurchase(String productId, final UniJSCallback callback) {
         successPayCallback = callback;
         billingManager.launchPurchase(productId);
+    }
+
+    @UniJSMethod
+    public void launchPurchaseSubs(String productId, final UniJSCallback callback) {
+        successPayCallback = callback;
+        billingManager.launchPurchaseSubs(productId);
+    }
+
+    /**
+     * 查询购买
+     *
+     * @param productType
+     * @param callback
+     */
+    @UniJSMethod(uiThread = true)
+    public void queryPurchases(String productType, final UniJSCallback callback) {
+        billingManager.queryPurchases(productType, callback);
+    }
+
+
+    /**
+     * 手动消耗购买
+     *
+     * @param productId
+     * @param callback
+     */
+    @UniJSMethod(uiThread = true)
+    public void handConsumePurchase(String productId, final UniJSCallback callback) {
+        billingManager.handConsumePurchase(productId, callback);
+    }
+
+
+    /**
+     * 手动处理订阅类消耗
+     *
+     * @param subsProductId
+     * @param callback
+     */
+    @UniJSMethod(uiThread = true)
+    public void handAcknowledgePurchase(String subsProductId, final UniJSCallback callback) {
+        billingManager.handAcknowledgePurchase(subsProductId, callback);
+    }
+
+    /**
+     * 更新订阅
+     *
+     * @param oldTocken        需要替换的套餐 赌赢的tocken
+     * @param newSubsProductId 新的套餐的ID
+     * @param callback
+     */
+    @UniJSMethod(uiThread = true)
+    public void upgradeSubscription(String oldTocken, String newSubsProductId, final UniJSCallback callback) {
+        billingManager.upgradeSubscription(oldTocken, newSubsProductId, callback);
     }
 
 

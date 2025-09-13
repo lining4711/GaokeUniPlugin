@@ -1,8 +1,7 @@
-package com.lingfeng.swapface.base;
+package com.lingfeng.swapface.base.old;
 
 import android.app.Activity;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import com.android.billingclient.api.*;
@@ -10,14 +9,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class GooglePayManager implements PurchasesUpdatedListener {
-    private static final String TAG = "GooglePayManager";
-    private static GooglePayManager instance;
+public class GooglePayManagerOld implements PurchasesUpdatedListener {
+    private static final String TAG = "GooglePayManagerOld";
+    private static GooglePayManagerOld instance;
     private BillingClient billingClient;
     private Activity activity;
     private ProductDetailsResponseListener productDetailsListener;
 
-    private GooglePayManager(Activity activity) {
+    private GooglePayManagerOld(Activity activity) {
         this.activity = activity;
         billingClient = BillingClient.newBuilder(activity)
                 .setListener(this)
@@ -27,8 +26,8 @@ public class GooglePayManager implements PurchasesUpdatedListener {
     }
 
 
-    public static GooglePayManager getInstance(Activity activity) {
-        if (instance == null) instance = new GooglePayManager(activity);
+    public static GooglePayManagerOld getInstance(Activity activity) {
+        if (instance == null) instance = new GooglePayManagerOld(activity);
         return instance;
     }
 
@@ -50,14 +49,14 @@ public class GooglePayManager implements PurchasesUpdatedListener {
         });
     }
 
-    public void queryProductDetails(List<String> productIds, ProductDetailsResponseListener listener) {
+    public void queryProductDetails(String type, List<String> productIds, ProductDetailsResponseListener listener) {
         this.productDetailsListener = listener;
 
         List<QueryProductDetailsParams.Product> productList = new ArrayList<>();
         for (String id : productIds) {
             productList.add(QueryProductDetailsParams.Product.newBuilder()
                     .setProductId(id)
-                    .setProductType(BillingClient.ProductType.INAPP)
+                    .setProductType(type)
                     .build());
         }
 
