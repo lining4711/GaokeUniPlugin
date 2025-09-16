@@ -13,7 +13,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
@@ -26,6 +25,8 @@ public class GooglePayModule extends UniModule {
     private BillingManager billingManager = null;
 
     private UniJSCallback successPayCallback;
+
+    private UniJSCallback queryProductCallback;
 
     @UniJSMethod
     public void test() {
@@ -54,7 +55,8 @@ public class GooglePayModule extends UniModule {
                     @Override
                     public void run() {
                         if (callback != null) {
-                            callback.invoke(resultAsyn.toString());
+                            callback.invoke(resultAsyn.toString()); //可以
+//                            callback.invoke(resultAsyn); //JSONObject直接返回 不可以
                         }
                     }
                 });
@@ -86,31 +88,40 @@ public class GooglePayModule extends UniModule {
             public void onProductDetails(List<ProductDetails> products, List<ProductDetails> unfetched) {
                 JSONObject resultAsyn = new JSONObject();
                 try {
-                    if (products.isEmpty()) {
-                        resultAsyn.put("code", 300);
-                        resultAsyn.put("errorMsg", "未查询到商品，确认参数");
-
-                    } else {
-                        resultAsyn.put("code", 200);
-                        resultAsyn.put("data", JsonUtils.convertToJSONArray(products));
-                    }
-                } catch (Exception e) {
-
+                    resultAsyn.put("code", 200);
+                    resultAsyn.put("data", "3333");
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
                 }
 
-                Toast.makeText(mUniSDKInstance.getContext(), "onProductDetails" + resultAsyn.toString() , Toast.LENGTH_LONG).show();
+//                PayResult resultBack = new PayResult();
+//                resultBack.setResultCode(200);
+//                resultBack.setData(JsonUtils.convertToJSONArray(products).toString());
 
-
+                String currentId = Thread.currentThread().getName();
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
-                        if (successPayCallback != null) {
-                            Toast.makeText(mUniSDKInstance.getContext(), "222onProductDetails" + resultAsyn.toString() , Toast.LENGTH_LONG).show();
+//                        Toast.makeText(mUniSDKInstance.getContext(), "onProductDetails enter:"  + currentId + "===" + JsonUtils.toString(resultBack), Toast.LENGTH_LONG).show();
 
-                            successPayCallback.invoke(resultAsyn.toString());
+                        if (queryProductCallback != null) {
+//                            queryProductCallback.invokeAndKeepAlive("onProductDetails enter:"  + currentId + "==" +  Thread.currentThread().getName());// 可以直接回调
+                            queryProductCallback.invokeAndKeepAlive(resultAsyn.toString());
                         }
                     }
                 });
+                try {
+//                    if (products.isEmpty()) {
+//                        resultAsyn.put("code", 300);
+//                        resultAsyn.put("errorMsg", "未查询到商品，确认参数");
+//
+//                    } else {
+//                        resultAsyn.put("code", 200);
+//                        resultAsyn.put("data", JsonUtils.convertToJSONArray(products));
+//                    }
+                } catch (Exception e) {
+
+                }
             }
 
             @Override
@@ -127,8 +138,8 @@ public class GooglePayModule extends UniModule {
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
-                        if (successPayCallback != null) {
-                            successPayCallback.invoke(resultAsyn.toString());
+                        if (queryProductCallback != null) {
+                            queryProductCallback.invokeAndKeepAlive(resultAsyn.toString());
                         }
                     }
                 });
@@ -140,6 +151,8 @@ public class GooglePayModule extends UniModule {
              */
             @Override
             public void onPurchaseSuccess(Purchase purchase) {
+                Toast.makeText(mUniSDKInstance.getContext(), "onPurchaseSuccess enter" , Toast.LENGTH_LONG).show();
+
                 for (String productId : purchase.getProducts()) {
                     for (ProductDetails productDetails : billingManager.getProductDetailsList()) {
                         if (productDetails == null) continue;
@@ -178,11 +191,12 @@ public class GooglePayModule extends UniModule {
 
             @Override
             public void onPurchaseFailure(BillingResult purchaseResult) {
-                try {
-                    PayResult resultAsyn = new PayResult();
-                    resultAsyn.setResultCode(300);
-                    resultAsyn.setErrorMsg("onPurchaseFailure, errorCode" + purchaseResult.getResponseCode());
+                Toast.makeText(mUniSDKInstance.getContext(), "onPurchaseFailure enter" , Toast.LENGTH_LONG).show();
 
+                try {
+                    JSONObject resultAsyn = new JSONObject();
+                    resultAsyn.put("code", 300);
+                    resultAsyn.put("errorMsg", "onPurchaseFailure, errorCode" + purchaseResult.getResponseCode()); //返回订阅成功的tocken
                     // 回到主线程回调给 UniApp
                     new Handler(Looper.getMainLooper()).post(new Runnable() {
                         @Override
@@ -199,6 +213,8 @@ public class GooglePayModule extends UniModule {
 
             @Override
             public void onConsumeSuccess(String purchaseToken) {
+                Toast.makeText(mUniSDKInstance.getContext(), "onConsumeSuccess enter" , Toast.LENGTH_LONG).show();
+
 //                JSONObject result = new JSONObject();
 //                try {
 //                    result.put("taskId", "onConsumeSuccess");
@@ -226,18 +242,18 @@ public class GooglePayModule extends UniModule {
      *
      * @param productId
      * @param type
-     * @param callback
+     * @param queryProductsCall
      */
     @UniJSMethod
-    public void queryProduct(String productId, @BillingClient.ProductType String type, final UniJSCallback callback) {
-        successPayCallback = callback;
-        billingManager.queryProducts(Arrays.asList(productId), type);
+    public void queryProduct(String productId, @BillingClient.ProductType String type, final UniJSCallback queryProductsCall) {
+        queryProductCallback = queryProductsCall;
+        billingManager.queryProducts(Arrays.asList(productId), type, queryProductsCall);
     }
 
     @UniJSMethod
-    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type, final UniJSCallback callback) {
-        successPayCallback = callback;
-        billingManager.queryProducts(productIds, type);
+    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type, final UniJSCallback queryProductsCall) {
+        queryProductCallback = queryProductsCall;
+        billingManager.queryProducts(productIds, type, queryProductsCall);
     }
 
     /**
@@ -266,7 +282,7 @@ public class GooglePayModule extends UniModule {
      */
     @UniJSMethod(uiThread = true)
     public void queryPurchases(String productType, final UniJSCallback fromVueCallback) {
-        billingManager.queryPurchases(productType, fromVueCallback, mUniSDKInstance);
+        billingManager.queryPurchases(productType, fromVueCallback);
     }
 
 

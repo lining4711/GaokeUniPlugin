@@ -107,7 +107,8 @@ public class BillingManager {
         });
     }
 
-    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type) {
+    public void queryProducts(List<String> productIds, @BillingClient.ProductType String type, final UniJSCallback queryProductsCall) {
+
         List<QueryProductDetailsParams.Product> prodList = new ArrayList<>();
         for (String id : productIds) {
             prodList.add(QueryProductDetailsParams.Product.newBuilder()
@@ -121,9 +122,28 @@ public class BillingManager {
 
         billingClient.queryProductDetailsAsync(params, (result, productDetailsList) -> {
             if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+
                 // 注意：新版还可能返回未抓取产品，可进一步处理
                 mProductDetailsList.clear();
                 mProductDetailsList.addAll(productDetailsList.getProductDetailsList());
+
+                try {
+                    JSONObject resultAsyn = new JSONObject();
+                    resultAsyn.put("code", 200);
+                    resultAsyn.put("data", "2222"); //数据量较小。可以返回
+//                    resultAsyn.put("data", JsonUtils.convertToJSONArray(productDetailsList.getProductDetailsList()).toString()); //数据量太大 返回不了
+
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (queryProductsCall != null) {
+                                queryProductsCall.invokeAndKeepAlive(resultAsyn.toString());
+//                                queryProductsCall.invokeAndKeepAlive("111"); // 可以返回
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                }
 
                 coreCallback.onProductDetails(productDetailsList.getProductDetailsList(), Collections.emptyList());
             } else {
@@ -343,7 +363,7 @@ public class BillingManager {
                                 try {
                                     if (result.getResponseCode() == BillingClient.BillingResponseCode.OK) {
                                         resultAsyn.put("code", 200);
-                                        resultAsyn.put("data", JsonUtils.toString(purchases));
+                                        resultAsyn.put("data", JsonUtils.toString(purchases)); //可能数据较大 返回失败
                                         coreCallback.onConsumeSuccess(purchase.getPurchaseToken()); //一次性商品购买之后 消耗掉
                                     } else {
                                         resultAsyn.put("code", 300);
@@ -385,9 +405,7 @@ public class BillingManager {
         });
     }
 
-    public void queryPurchases(String productType, final UniJSCallback callback, AbsSDKInstance sDKInstance) {
-        Toast.makeText(sDKInstance.getContext(), "queryPurchases", Toast.LENGTH_LONG).show();
-
+    public void queryPurchases(String productType, final UniJSCallback callback) {
         billingClient.queryPurchasesAsync(
                 QueryPurchasesParams.newBuilder()
                         .setProductType(productType)
@@ -395,6 +413,7 @@ public class BillingManager {
                 new PurchasesResponseListener() {
                     @Override
                     public void onQueryPurchasesResponse(@NonNull BillingResult billingResult, @NonNull List<Purchase> purchases) {
+
                         JSONObject result = new JSONObject();
                         try {
                             if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
@@ -415,14 +434,14 @@ public class BillingManager {
                             }
                         } catch (JSONException e) {
                             Log.e(TAG, "JSON 构建失败：" + e.getLocalizedMessage());
-                            Toast.makeText(sDKInstance.getContext(), "JSON 构建失败：" + e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
                         }
 
                         new Handler(Looper.getMainLooper()).post(new Runnable() {
                             @Override
                             public void run() {
                                 if (callback != null) {
-                                    callback.invokeAndKeepAlive(result); // true = keepAlive，可多次回调
+//                                    callback.invokeAndKeepAlive("查询内购历史");// 可以直接返回
+                                    callback.invokeAndKeepAlive(result.toString());
                                 }
                             }
                         });
